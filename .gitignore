@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Trained artifacts (regenerate with train_model.py)
+model.pkl
+training_log.txt
+
+# Large / third-party data and reference repo
+dephides/
+
+# Assignment documents
+*.pdf
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

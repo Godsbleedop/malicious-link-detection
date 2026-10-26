@@ -1,22 +1,22 @@
 {
   "saved_model_on_test": {
     "model": "XGBoost",
-    "threshold": 0.39,
-    "accuracy": 0.9487,
-    "precision": 0.9264,
-    "recall": 0.9606,
-    "f1": 0.9432,
-    "roc_auc": 0.9915
+    "threshold": 0.45,
+    "accuracy": 0.9506,
+    "precision": 0.9363,
+    "recall": 0.9532,
+    "f1": 0.9447,
+    "roc_auc": 0.9914
   },
   "feature_configs": [
     {
       "config": "lexical-only",
       "n_features": 25,
-      "accuracy": 0.9242,
-      "precision": 0.9076,
-      "recall": 0.9225,
-      "f1": 0.915,
-      "roc_auc": 0.9803
+      "accuracy": 0.9234,
+      "precision": 0.9072,
+      "recall": 0.9213,
+      "f1": 0.9142,
+      "roc_auc": 0.9804
     },
     {
       "config": "host-only",
@@ -30,11 +30,11 @@
     {
       "config": "combined",
       "n_features": 40,
-      "accuracy": 0.9468,
+      "accuracy": 0.9466,
       "precision": 0.9365,
-      "recall": 0.944,
-      "f1": 0.9402,
-      "roc_auc": 0.99
+      "recall": 0.9432,
+      "f1": 0.9398,
+      "roc_auc": 0.9899
     }
   ]
 }

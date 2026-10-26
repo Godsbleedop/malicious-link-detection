@@ -3,29 +3,28 @@
 Run with:
     streamlit run app.py
 
-The UI reuses ``features.py`` and the trained ``model.pkl`` bundle, so the same
-logic as ``predict.py`` is used. It also shows the model's global feature
+The UI reuses ``classifier.py`` and the trained ``model.pkl`` bundle, so the
+same logic as ``predict.py`` is used. It also shows the model's global feature
 importances to make predictions more explainable.
 """
 from __future__ import annotations
 
-import joblib
 import pandas as pd
 import streamlit as st
 
-from features import extract_all
+from classifier import DEFAULT_MODEL_PATH, classify, load_bundle
 
 st.set_page_config(page_title="Malicious URL Classifier", page_icon="🔗", layout="wide")
 
 
 @st.cache_resource
-def load_bundle(path: str = "model.pkl") -> dict:
-    return joblib.load(path)
+def get_bundle():
+    return load_bundle(DEFAULT_MODEL_PATH)
 
 
 @st.cache_data
 def get_importances(features: tuple[str, ...]) -> pd.Series:
-    bundle = load_bundle()
+    bundle = get_bundle()
     model = bundle["model"]
     if hasattr(model, "feature_importances_"):
         values = model.feature_importances_
@@ -36,19 +35,13 @@ def get_importances(features: tuple[str, ...]) -> pd.Series:
     return pd.Series(values, index=list(features)).sort_values(ascending=False)
 
 
-def classify(url: str, bundle: dict, threshold: float):
-    feats = pd.DataFrame([extract_all(url)])[bundle["features"]]
-    if bundle.get("scaler") is not None:
-        feats_scaled = bundle["scaler"].transform(feats)
-    else:
-        feats_scaled = feats
-    p_phishing = float(bundle["model"].predict_proba(feats_scaled)[0][1])
-    is_phishing = p_phishing >= threshold
-    return p_phishing, is_phishing, feats
-
-
 def main() -> None:
-    bundle = load_bundle()
+    try:
+        bundle = get_bundle()
+    except FileNotFoundError:
+        st.error("model.pkl not found. Run `python3 train_model.py` first.")
+        return
+
     default_threshold = float(bundle.get("threshold", 0.5))
 
     st.title("🔗 Malicious URL Classifier")
@@ -70,8 +63,6 @@ def main() -> None:
             f"Saved F1-optimal threshold: **{default_threshold:.2f}**  \n"
             f"High-recall threshold: **{bundle.get('high_recall_threshold', default_threshold):.2f}**"
         )
-        if st.button("Reset to saved threshold"):
-            threshold = default_threshold
 
         st.divider()
         st.subheader("Try an example")
@@ -95,27 +86,30 @@ def main() -> None:
     )
 
     if st.button("🔍 Classify", type="primary") and url.strip():
-        p_phishing, is_phishing, feats = classify(url.strip(), bundle, threshold)
-        confidence = p_phishing if is_phishing else 1 - p_phishing
+        try:
+            result = classify(url, bundle, threshold=threshold)
+        except ValueError as exc:
+            st.error(f"Invalid URL: {exc}")
+            return
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("Verdict", "PHISHING ⚠️" if is_phishing else "LEGITIMATE ✅")
-        col2.metric("Confidence", f"{confidence:.2%}")
-        col3.metric("P(phishing)", f"{p_phishing:.2%}")
+        col1.metric("Verdict", "PHISHING ⚠️" if result["is_phishing"] else "LEGITIMATE ✅")
+        col2.metric("Confidence", f"{result['confidence']:.2%}")
+        col3.metric("P(phishing)", f"{result['p_phishing']:.2%}")
 
-        st.progress(min(max(p_phishing, 0.0), 1.0))
-        if is_phishing:
+        st.progress(min(max(result["p_phishing"], 0.0), 1.0))
+        if result["is_phishing"]:
             st.error("This URL is classified as malicious (phishing).")
         else:
             st.success("This URL is classified as legitimate (safe).")
 
         st.divider()
-        left, right = st.columns([1, 1])
+        left, right = st.columns(2)
 
         with left:
             st.subheader("Extracted features")
             st.dataframe(
-                feats.T.rename(columns={0: "value"}),
+                result["features"].T.rename(columns={0: "value"}),
                 use_container_width=True, height=420,
             )
 
@@ -125,7 +119,7 @@ def main() -> None:
             st.bar_chart(importances)
             st.caption("Global importance from the trained model (not per-URL attribution).")
 
-    elif url.strip() == "":
+    elif not url.strip():
         st.info("Enter a URL above, or pick an example from the sidebar.")
 
     st.divider()

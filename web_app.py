@@ -9,16 +9,12 @@ A Streamlit version is also available (`app.py`) if Streamlit is installed.
 from __future__ import annotations
 
 import html
-import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs
 
-import joblib
-import pandas as pd
+from classifier import DEFAULT_MODEL_PATH, classify, load_bundle
 
-from features import extract_all
-
-BUNDLE = joblib.load("model.pkl")
+BUNDLE = load_bundle(DEFAULT_MODEL_PATH)
 
 PAGE = """<!doctype html>
 <html lang="en">
@@ -40,6 +36,7 @@ PAGE = """<!doctype html>
   .result {{ padding: 18px; border-radius: 12px; margin: 18px 0; }}
   .phishing {{ background: #ffe3e3; color: #8a1010; border: 1px solid #e0a0a0; }}
   .safe {{ background: #e3f6e3; color: #0d5a0d; border: 1px solid #a0d0a0; }}
+  .error {{ background: #fff4d6; color: #6b4b00; border: 1px solid #e0c060; }}
   .big {{ font-size: 24px; font-weight: 700; }}
   table {{ border-collapse: collapse; width: 100%; margin-top: 14px; }}
   td, th {{ padding: 6px 10px; border-bottom: 1px solid #ddd; text-align: left; }}
@@ -58,10 +55,6 @@ PAGE = """<!doctype html>
   <button type="submit">Classify</button>
 </form>
 {result}
-<details>
-  <summary>Extracted features</summary>
-  {features}
-</details>
 <hr>
 <p class="sub">Try: <code>https://www.google.com</code> ·
 <code>http://paypal-secure-login.example.com/verify</code> ·
@@ -70,33 +63,26 @@ PAGE = """<!doctype html>
 </html>"""
 
 
-def classify(url: str):
-    feats = pd.DataFrame([extract_all(url)])[BUNDLE["features"]]
-    if BUNDLE.get("scaler") is not None:
-        feats_scaled = BUNDLE["scaler"].transform(feats)
-    else:
-        feats_scaled = feats
-    p = float(BUNDLE["model"].predict_proba(feats_scaled)[0][1])
-    threshold = float(BUNDLE.get("threshold", 0.5))
-    return p, threshold, feats
-
-
 def result_html(url: str) -> str:
     if not url.strip():
         return ""
-    p, threshold, feats = classify(url)
-    phishing = p >= threshold
-    conf = p if phishing else 1 - p
-    cls = "phishing" if phishing else "safe"
-    verdict = "PHISHING ⚠️" if phishing else "LEGITIMATE ✅"
+    try:
+        result = classify(url, BUNDLE)
+    except ValueError as exc:
+        return f'<div class="result error"><b>Invalid URL:</b> {html.escape(str(exc))}</div>'
+
+    p = result["p_phishing"]
+    cls = "phishing" if result["is_phishing"] else "safe"
+    verdict = "PHISHING ⚠️" if result["is_phishing"] else "LEGITIMATE ✅"
     rows = "".join(
-        f"<tr><td>{html.escape(str(k))}</td><td>{v}</td></tr>"
-        for k, v in feats.iloc[0].items()
+        f"<tr><td>{html.escape(str(k))}</td><td>{html.escape(str(v))}</td></tr>"
+        for k, v in result["features"].iloc[0].items()
     )
     return f"""
 <div class="result {cls}">
   <div class="big">{verdict}</div>
-  <div>Confidence: <b>{conf:.2%}</b> · P(phishing): {p:.2%} · threshold {threshold:.2f}</div>
+  <div>Confidence: <b>{result['confidence']:.2%}</b> · P(phishing): {p:.2%}
+       · threshold {result['threshold']:.2f}</div>
   <div class="bar" style="margin-top:10px"><span style="width:{p*100:.1f}%"></span></div>
 </div>
 <details><summary>Extracted features</summary>
@@ -111,7 +97,6 @@ def render(url: str = "") -> str:
         threshold=float(BUNDLE.get("threshold", 0.5)),
         url=html.escape(url, quote=True),
         result=result_html(url),
-        features="",
     )
 
 
@@ -129,7 +114,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(length).decode("utf-8")
+        body = self.rfile.read(length).decode("utf-8", errors="ignore")
         url = parse_qs(body).get("url", [""])[0]
         self._send(render(url))
 

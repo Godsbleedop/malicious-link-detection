@@ -6,13 +6,13 @@
   "val_scores": {
     "LogisticRegression": {
       "threshold": 0.5,
-      "accuracy": 0.924,
-      "precision": 0.9062,
+      "accuracy": 0.9239,
+      "precision": 0.9059,
       "recall": 0.9264,
-      "f1": 0.9162,
+      "f1": 0.916,
       "roc_auc": 0.9815,
-      "tn": 7630,
-      "fp": 645,
+      "tn": 7628,
+      "fp": 647,
       "fn": 495,
       "tp": 6230,
       "false_negative_rate": 0.0736
@@ -20,61 +20,61 @@
     "SVM (RBF)": {
       "threshold": 0.5,
       "accuracy": 0.9396,
-      "precision": 0.9274,
-      "recall": 0.9387,
-      "f1": 0.933,
+      "precision": 0.9271,
+      "recall": 0.9392,
+      "f1": 0.9331,
       "roc_auc": 0.9864,
-      "tn": 7781,
-      "fp": 494,
-      "fn": 412,
-      "tp": 6313,
-      "false_negative_rate": 0.0613
+      "tn": 7778,
+      "fp": 497,
+      "fn": 409,
+      "tp": 6316,
+      "false_negative_rate": 0.0608
     },
     "RandomForest": {
       "threshold": 0.5,
       "accuracy": 0.9437,
-      "precision": 0.9396,
-      "recall": 0.9344,
-      "f1": 0.937,
-      "roc_auc": 0.9891,
-      "tn": 7871,
-      "fp": 404,
-      "fn": 441,
-      "tp": 6284,
-      "false_negative_rate": 0.0656
+      "precision": 0.9388,
+      "recall": 0.9355,
+      "f1": 0.9371,
+      "roc_auc": 0.9892,
+      "tn": 7865,
+      "fp": 410,
+      "fn": 434,
+      "tp": 6291,
+      "false_negative_rate": 0.0645
     },
     "XGBoost": {
       "threshold": 0.5,
-      "accuracy": 0.9496,
-      "precision": 0.9475,
-      "recall": 0.9396,
-      "f1": 0.9436,
-      "roc_auc": 0.9918,
-      "tn": 7925,
-      "fp": 350,
-      "fn": 406,
-      "tp": 6319,
-      "false_negative_rate": 0.0604
+      "accuracy": 0.9492,
+      "precision": 0.9463,
+      "recall": 0.9401,
+      "f1": 0.9432,
+      "roc_auc": 0.9917,
+      "tn": 7916,
+      "fp": 359,
+      "fn": 403,
+      "tp": 6322,
+      "false_negative_rate": 0.0599
     }
   },
   "cv": {
     "LogisticRegression": {
-      "cv_f1_mean": 0.9096,
-      "cv_f1_std": 0.0044,
-      "cv_auc_mean": 0.9789,
+      "cv_f1_mean": 0.9097,
+      "cv_f1_std": 0.0043,
+      "cv_auc_mean": 0.979,
       "cv_auc_std": 0.0011
     },
     "RandomForest": {
-      "cv_f1_mean": 0.9278,
-      "cv_f1_std": 0.0037,
-      "cv_auc_mean": 0.9857,
+      "cv_f1_mean": 0.9277,
+      "cv_f1_std": 0.0029,
+      "cv_auc_mean": 0.9855,
       "cv_auc_std": 0.0012
     },
     "XGBoost": {
-      "cv_f1_mean": 0.9297,
-      "cv_f1_std": 0.0021,
+      "cv_f1_mean": 0.9321,
+      "cv_f1_std": 0.0016,
       "cv_auc_mean": 0.9878,
-      "cv_auc_std": 0.0005
+      "cv_auc_std": 0.0004
     },
     "SVM (RBF)": {
       "note": "skipped (too slow); trained on subsample"
@@ -82,41 +82,41 @@
   },
   "test_default": {
     "threshold": 0.5,
-    "accuracy": 0.9518,
-    "precision": 0.9458,
-    "recall": 0.9453,
-    "f1": 0.9455,
-    "roc_auc": 0.9915,
-    "tn": 10667,
-    "fp": 480,
-    "fn": 484,
-    "tp": 8369,
-    "false_negative_rate": 0.0547
+    "accuracy": 0.9514,
+    "precision": 0.9444,
+    "recall": 0.9459,
+    "f1": 0.9451,
+    "roc_auc": 0.9914,
+    "tn": 10654,
+    "fp": 493,
+    "fn": 479,
+    "tp": 8374,
+    "false_negative_rate": 0.0541
   },
   "test_tuned": {
-    "threshold": 0.39,
-    "accuracy": 0.9487,
-    "precision": 0.9264,
-    "recall": 0.9606,
-    "f1": 0.9432,
-    "roc_auc": 0.9915,
-    "tn": 10471,
-    "fp": 676,
-    "fn": 349,
-    "tp": 8504,
-    "false_negative_rate": 0.0394
+    "threshold": 0.45,
+    "accuracy": 0.9506,
+    "precision": 0.9363,
+    "recall": 0.9532,
+    "f1": 0.9447,
+    "roc_auc": 0.9914,
+    "tn": 10573,
+    "fp": 574,
+    "fn": 414,
+    "tp": 8439,
+    "false_negative_rate": 0.0468
   },
   "test_high_recall": {
-    "threshold": 0.43,
+    "threshold": 0.44,
     "accuracy": 0.9503,
-    "precision": 0.9337,
-    "recall": 0.9556,
+    "precision": 0.9345,
+    "recall": 0.9546,
     "f1": 0.9445,
-    "roc_auc": 0.9915,
-    "tn": 10546,
-    "fp": 601,
-    "fn": 393,
-    "tp": 8460,
-    "false_negative_rate": 0.0444
+    "roc_auc": 0.9914,
+    "tn": 10555,
+    "fp": 592,
+    "fn": 402,
+    "tp": 8451,
+    "false_negative_rate": 0.0454
   }
 }

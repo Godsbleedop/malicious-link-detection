@@ -3,6 +3,54 @@
 > Master documentation lives in [`README.md`](README.md). This file is the
 > dated changelog.
 
+## 2026-10-26 — Code review fixes & cleanup
+
+### Correctness fixes (`features.py`)
+- `has_https` now checks `parsed.scheme == "https"` (was `startswith("https")`,
+  which treated `httpswhatever.example.com` as HTTPS).
+- `has_ip` now validates the URL **hostname** with `ipaddress`; IP-like text in
+  paths/queries and invalid literals no longer match.
+- Malformed ports (`https://example.com:abc`) no longer crash extraction;
+  `has_port` is safe and `normalize_url()` raises a clear `ValueError` at the
+  user-input boundary.
+- Renamed `suspicious_word_count` → `distinct_suspicious_words` (it counts
+  distinct keywords, not occurrences).
+- Clarified `has_file_ext` docs: a match is a weak signal, not proof of malice.
+
+### Reusability
+- New `classifier.py` is the single prediction path used by `predict.py`,
+  `web_app.py` and `app.py` (removed duplicated logic).
+
+### Error handling
+- CLI prints `Invalid URL: …` and continues; web UI renders an error box;
+  missing `model.pkl` produces a helpful message.
+- `web_app.py` catches `ValueError` so a bad request cannot kill the handler.
+
+### Testing
+- Added `tests/` with **25 `unittest` tests**:
+  `test_features.py` (correctness, malformed input, feature order/types) and
+  `test_pipeline.py` (known URLs, threshold behaviour, invalid input).
+- Run: `python3 -m unittest discover -s tests -v` → **25 passed**.
+
+### Cleanup
+- Removed: `analysis.ipynb`, `full_pipeline.ipynb` (unexecuted duplicates),
+  `build_notebook.py`, `build_full_notebook.py`, `training_log.txt`, caches.
+- Moved: notebooks → `notebooks/`, `PROJECT.md` → `docs/PROJECT_ORIGINAL.md`,
+  assignment PDF → `docs/`.
+- Added: `classifier.py`, `tests/`, `.gitignore` updates.
+
+### Retrained results (official test split, XGBoost)
+| Threshold | Accuracy | Precision | Recall | F1 | ROC-AUC | FNR |
+|---|---|---|---|---|---|---|
+| 0.50 | 0.9514 | 0.9444 | 0.9459 | 0.9451 | 0.9914 | 5.41 % |
+| **0.45 (tuned)** | 0.9506 | 0.9363 | **0.9532** | **0.9447** | **0.9914** | **4.68 %** |
+| 0.44 (high-recall) | 0.9503 | 0.9345 | 0.9546 | 0.9445 | 0.9914 | 4.54 % |
+
+Feature configs (test): lexical-only F1 0.9142 / AUC 0.9804,
+host-only F1 0.7718 / AUC 0.8838, **combined F1 0.9398 / AUC 0.9899**.
+
+---
+
 ## 2026-10-24 — Major upgrade
 
 ### Feature engineering (23 → 40 features)

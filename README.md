@@ -23,13 +23,13 @@ configurations (lexical-only, host-only, combined).
 
 | Metric | Value |
 |---|---|
-| Accuracy | **94.87 %** |
-| Precision | 92.64 % |
-| Recall | **96.06 %** |
-| F1 | 94.32 % |
-| ROC-AUC | **0.9915** |
+| Accuracy | **95.06 %** |
+| Precision | 93.63 % |
+| Recall | **95.32 %** |
+| F1 | 94.47 % |
+| ROC-AUC | **0.9914** |
 
-Best model: **XGBoost** with a validation-tuned decision threshold of **0.39**.
+Best model: **XGBoost** with a validation-tuned decision threshold of **0.45**.
 
 ---
 
@@ -75,13 +75,13 @@ Properties of the raw URL string.
 | 2–10 | `num_dots`, `num_slashes`, `num_digits`, `num_hyphens`, `num_underscores`, `num_at`, `num_question`, `num_equals`, `num_ampersand` | character counts |
 | 11 | `has_https` | scheme is HTTPS |
 | 12 | `has_ip` | IPv4 address in the URL |
-| 13 | `suspicious_word_count` | matches from 28 keywords (login, verify, bank, paypal, …) |
+| 13 | `distinct_suspicious_words` | number of **distinct** configured keywords present (login, verify, bank, paypal, …; not total occurrences) |
 | 14–15 | `path_length`, `query_length` | lengths of path / query |
 | 16 | `url_entropy` | Shannon entropy of the whole URL (randomness) |
 | 17 | `digit_ratio` | digits / length |
 | 18 | `special_char_ratio` | non-alphanumeric / length |
 | 19 | `path_depth` | number of path segments |
-| 20 | `has_file_ext` | risky extension (`.exe`, `.php`, `.js`, …) |
+| 20 | `has_file_ext` | extension is in a common web/executable list (`.php`, `.js`, `.exe`, …) — weak signal only, not proof of malice |
 | 21 | `num_query_params` | number of `&`-separated parameters |
 | 22 | `fragment_length` | characters after `#` |
 | 23 | `has_redirect` | protocol-relative / `//` pattern |
@@ -135,8 +135,8 @@ LR and SVM consume standardised features; tree models use raw features.
 - Models are compared on the **validation** split (never the test split).
 - The best model by validation F1 is chosen (**XGBoost**).
 - The decision threshold is tuned on validation probabilities in `[0.05, 0.95]`:
-  - **F1-optimal threshold** → `0.39`
-  - **High-recall threshold** (recall ≥ 0.95) → `0.43`
+  - **F1-optimal threshold** → `0.45`
+  - **High-recall threshold** (recall ≥ 0.95) → `0.44`
 - The threshold is stored in `model.pkl` and applied automatically by
   `predict.py` and `app.py`. `--high-recall` selects the higher-recall point.
 
@@ -150,37 +150,37 @@ LR and SVM consume standardised features; tree models use raw features.
 ### 5.1 Model comparison (validation, threshold 0.5)
 | Model | Accuracy | Precision | Recall | F1 | ROC-AUC |
 |---|---|---|---|---|---|
-| Logistic Regression | 0.9240 | 0.9062 | 0.9264 | 0.9162 | 0.9815 |
-| SVM (RBF) | 0.9396 | 0.9274 | 0.9387 | 0.9330 | 0.9864 |
-| Random Forest | 0.9437 | 0.9396 | 0.9344 | 0.9370 | 0.9891 |
-| **XGBoost** | **0.9496** | **0.9475** | 0.9396 | **0.9436** | **0.9918** |
+| Logistic Regression | 0.9239 | 0.9059 | 0.9264 | 0.9160 | 0.9815 |
+| SVM (RBF) | 0.9396 | 0.9271 | 0.9392 | 0.9331 | 0.9864 |
+| Random Forest | 0.9437 | 0.9388 | 0.9355 | 0.9371 | 0.9892 |
+| **XGBoost** | **0.9492** | **0.9463** | 0.9401 | **0.9432** | **0.9917** |
 
 ### 5.2 3-fold cross-validation (subset)
 | Model | F1 mean ± std | ROC-AUC mean ± std |
 |---|---|---|
-| Logistic Regression | 0.9096 ± 0.0044 | 0.9789 ± 0.0011 |
-| Random Forest | 0.9278 ± 0.0037 | 0.9857 ± 0.0012 |
-| XGBoost | **0.9297 ± 0.0021** | **0.9878 ± 0.0005** |
+| Logistic Regression | 0.9097 ± 0.0043 | 0.9790 ± 0.0011 |
+| Random Forest | 0.9277 ± 0.0029 | 0.9855 ± 0.0012 |
+| XGBoost | **0.9321 ± 0.0016** | **0.9878 ± 0.0004** |
 
 SVM CV was skipped (too slow); it was trained on a 12k subsample.
 
 ### 5.3 Official test split — best model (XGBoost)
 | Threshold | Accuracy | Precision | Recall | F1 | ROC-AUC | False-negative rate |
 |---|---|---|---|---|---|---|
-| 0.50 (default) | 0.9518 | 0.9458 | 0.9453 | 0.9455 | 0.9915 | 5.47 % |
-| **0.39 (tuned)** | 0.9487 | 0.9264 | **0.9606** | **0.9432** | **0.9915** | **3.94 %** |
-| 0.43 (high-recall) | 0.9503 | 0.9337 | 0.9556 | 0.9445 | 0.9915 | 4.44 % |
+| 0.50 (default) | 0.9514 | 0.9444 | 0.9459 | 0.9451 | 0.9914 | 5.41 % |
+| **0.45 (tuned)** | 0.9506 | 0.9363 | **0.9532** | **0.9447** | **0.9914** | **4.68 %** |
+| 0.44 (high-recall) | 0.9503 | 0.9345 | 0.9546 | 0.9445 | 0.9914 | 4.54 % |
 
-**Interpretation:** the tuned threshold trades ~2 points of precision for
-~1.5 points of recall, cutting missed phishing from 5.47 % to 3.94 %. For
+**Interpretation:** the tuned threshold trades ~1 point of precision for
+~0.7 points of recall, cutting missed phishing from 5.41 % to 4.68 %. For
 security, that is usually the right trade-off.
 
 ### 5.4 Feature configuration comparison (XGBoost, test split)
 | Config | Features | Accuracy | Precision | Recall | F1 | ROC-AUC |
 |---|---|---|---|---|---|---|
-| Lexical-only | 25 | 0.9242 | 0.9076 | 0.9225 | 0.9150 | 0.9803 |
+| Lexical-only | 25 | 0.9234 | 0.9072 | 0.9213 | 0.9142 | 0.9804 |
 | Host-only | 15 | 0.8160 | 0.8557 | 0.7028 | 0.7718 | 0.8838 |
-| **Combined** | **40** | **0.9468** | **0.9365** | **0.9440** | **0.9402** | **0.9900** |
+| **Combined** | **40** | **0.9466** | **0.9365** | **0.9432** | **0.9398** | **0.9899** |
 
 Combined features clearly win: lexical features carry most of the signal,
 host features add complementary domain-level evidence.
@@ -244,27 +244,47 @@ Adds a decision-threshold slider, example buttons, and a feature-importance char
 python3 features.py "http://paypal-secure-login.free-bonus.click/verify"
 ```
 
+### Run the automated tests
+```bash
+python3 -m unittest discover -s tests -v
+```
+25 tests cover feature correctness (scheme detection, IP validation, malformed
+ports, feature order/types) and the end-to-end prediction pipeline (known
+legitimate/phishing URLs, threshold behaviour, invalid-input handling).
+
+### Error handling
+- `features.normalize_url()` validates user input at the boundary: empty input,
+  missing hostnames and malformed ports (e.g. `https://example.com:abc`) raise a
+  clear `ValueError`.
+- Feature extraction itself never crashes — malformed ports are mapped to
+  `has_port = 0`, and invalid IP literals to `has_ip = 0`.
+- The CLI prints `Invalid URL: …` and continues; the web UI renders an error box.
+- `predict.py` exits with a helpful message if `model.pkl` is missing.
+
 ---
 
 ## 7. Project Files
 
 | Path | Purpose |
 |---|---|
-| `features.py` | 40 lexical + host features, `ALL_COLS` |
+| `features.py` | 40 lexical + host features, input validation, `ALL_COLS` |
+| `classifier.py` | shared load/classify logic (CLI + both UIs) |
 | `train_model.py` | train/compare models, CV, threshold tuning, save `model.pkl` |
 | `predict.py` | CLI prediction with tuned threshold + loop mode |
 | `app.py` | Streamlit web UI (optional) |
 | `web_app.py` | zero-dependency stdlib web UI (default demo) |
 | `evaluate.py` | test-set evaluation, config comparison, figures |
+| `tests/` | 25 automated tests (`unittest`) |
 | `model.pkl` | bundle: model, features, scaler, threshold, metadata |
 | `metrics.json` | validation/test metrics from training |
 | `metrics_configs.json` | feature-config comparison results |
 | `docs/figures/` | ROC, PR, confusion matrix, importance, comparison plots |
+| `docs/PROJECT_ORIGINAL.md` | original project notes (superseded by README) |
+| `docs/261091010001-22_miniproject-3.pdf` | assignment brief |
+| `notebooks/analysis_executed.ipynb` | EDA / feature-selection notebook (earlier work) |
+| `notebooks/full_pipeline_executed.ipynb` | 4-model comparison notebook (earlier work) |
 | `README.md` | this document |
 | `PROGRESS.md` | dated changelog |
-| `PROJECT.md` | original project notes (superseded by README) |
-| `analysis*.ipynb`, `full_pipeline*.ipynb` | exploratory notebooks (earlier work) |
-| `build_*.py` | notebook generators (earlier work) |
 | `dephides/` | reference repo + dataset (not part of the deliverable) |
 
 ---
@@ -291,6 +311,24 @@ python3 features.py "http://paypal-secure-login.free-bonus.click/verify"
 ---
 
 ## 9. Changelog
+
+### 2026-10-26 — Code review fixes & cleanup
+- **`has_https` fixed:** now checks `parsed.scheme == "https"` instead of
+  `str.startswith("https")` (so `httpswhatever.example.com` is no longer HTTPS).
+- **IP detection fixed:** validates the URL *hostname* with `ipaddress`; IP-like
+  text in paths/queries and invalid literals (`999.999.999.999`) no longer count.
+- **Malformed ports no longer crash:** `has_port` uses a safe accessor, and the
+  new `normalize_url()` validates input at the boundary with a clear error.
+- **Feature rename:** `suspicious_word_count` → `distinct_suspicious_words`
+  (it counts distinct keywords, not occurrences).
+- **Docs:** clarified that `has_file_ext` is a weak signal, not proof of malice.
+- **Reusability:** new `classifier.py` is the single prediction path used by the
+  CLI, the stdlib web UI and the Streamlit app (no duplicated logic).
+- **Testing:** added `tests/` with **25 `unittest` tests** (features + pipeline).
+- **Cleanup:** removed duplicate notebooks, notebook generators, old training log
+  and caches; moved notebooks to `notebooks/`, docs to `docs/`.
+- **Retrained:** F1-optimal threshold now **0.45**, high-recall **0.44**; test
+  accuracy 95.06 %, recall 95.32 %, ROC-AUC 0.9914.
 
 ### 2026-10-24 — Major upgrade
 - **Features:** 23 → **40** (added entropy, ratios, path depth, file extension,

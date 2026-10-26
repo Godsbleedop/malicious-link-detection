@@ -7,13 +7,21 @@ HOST_COLS    : properties of the host / registered domain (via tldextract).
 
 `extract_all(url)` merges both and `ALL_COLS` is the canonical column order used
 by training, evaluation and prediction.
+
+Robustness
+----------
+Feature extraction is deliberately total: any string input yields a complete
+feature row (malformed ports / invalid IPv6 are handled without raising). Input
+*validation* is a separate concern and lives in :func:`normalize_url`, which
+callers should run first so users get a clear error instead of a silent guess.
 """
 from __future__ import annotations
 
+import ipaddress
 import math
 import re
 from collections import Counter
-from urllib.parse import urlparse
+from urllib.parse import ParseResult, urlparse
 
 import tldextract
 
@@ -43,7 +51,9 @@ BRANDS = [
     "bankofamerica", "outlook", "icloud", "yahoo", "twitter", "steam",
 ]
 
-# Common web file extensions.
+# Common web / executable extensions. NOTE: a match is only a weak signal --
+# `.php` or `.js` are used by millions of legitimate sites; the model weighs
+# this feature together with the others, it does not imply maliciousness.
 FILE_EXTENSIONS = {
     "html", "htm", "php", "asp", "aspx", "jsp", "cgi", "pl", "exe",
     "zip", "rar", "js", "bat", "cmd", "scr", "msi", "apk", "dll",
@@ -54,13 +64,40 @@ URL_SHORTENERS = {
     "buff.ly", "rebrand.ly", "cutt.ly", "shorturl.at", "tiny.cc",
 }
 
-_IP_RE = re.compile(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b")
 _PUNYCODE_RE = re.compile(r"xn--", re.IGNORECASE)
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Parsing helpers (never raise)
 # ---------------------------------------------------------------------------
+def _safe_parse(url: str) -> ParseResult:
+    """urlparse that tolerates invalid IPv6 brackets etc."""
+    try:
+        return urlparse(url)
+    except ValueError:
+        return urlparse("")
+
+
+def _safe_port(parsed: ParseResult) -> int:
+    """1 if an explicit port is present and valid, else 0."""
+    try:
+        return int(parsed.port is not None)
+    except ValueError:
+        return 0
+
+
+def _host_is_ip(parsed: ParseResult) -> int:
+    """1 if the URL's hostname is a valid IPv4/IPv6 literal, else 0."""
+    host = parsed.hostname
+    if not host:
+        return 0
+    try:
+        ipaddress.ip_address(host)
+        return 1
+    except ValueError:
+        return 0
+
+
 def _entropy(s: str) -> float:
     """Shannon entropy (bits per character) of a string."""
     if not s:
@@ -75,12 +112,43 @@ def _ratio(part: int, whole: int) -> float:
 
 
 # ---------------------------------------------------------------------------
+# Input validation (call this at the user-input boundary)
+# ---------------------------------------------------------------------------
+def normalize_url(url: str) -> str:
+    """Validate and normalise a user-supplied URL.
+
+    - rejects non-strings and empty input,
+    - prepends ``http://`` when no scheme is given (``example.com``),
+    - rejects URLs without a hostname,
+    - rejects malformed / out-of-range ports with a clear message.
+
+    Returns the normalised URL string, or raises ``ValueError``.
+    """
+    if not isinstance(url, str):
+        raise ValueError("URL must be a string")
+    u = url.strip()
+    if not u:
+        raise ValueError("URL is empty")
+    if "://" not in u:
+        u = "http://" + u
+
+    parsed = _safe_parse(u)
+    if not parsed.hostname:
+        raise ValueError(f"URL has no valid hostname: {url!r}")
+    try:
+        parsed.port  # noqa: B018 - property access validates the port
+    except ValueError as exc:
+        raise ValueError(f"Invalid port in URL {url!r}: {exc}") from exc
+    return u
+
+
+# ---------------------------------------------------------------------------
 # Lexical features
 # ---------------------------------------------------------------------------
 def extract_lexical(url: str) -> dict:
-    u = url.strip()
+    u = str(url).strip()
     low = u.lower()
-    parsed = urlparse(u)
+    parsed = _safe_parse(u)
     path = parsed.path or ""
     query = parsed.query or ""
     fragment = parsed.fragment or ""
@@ -97,9 +165,11 @@ def extract_lexical(url: str) -> dict:
     # Query parameters: `?a=1&b=2` -> 2 params (empty query -> 0).
     num_query_params = len([p for p in query.split("&") if p]) if query else 0
 
-    # Redirect / protocol-relative patterns and explicit ports.
-    has_redirect = int("//" in u[8:] if low.startswith(("http://", "https://")) else "//" in u)
-    has_port = int(parsed.port is not None)
+    # Protocol-relative / redirect patterns.
+    if low.startswith(("http://", "https://")):
+        has_redirect = int("//" in u.split("://", 1)[1])
+    else:
+        has_redirect = int("//" in u)
 
     return {
         # --- original lexical features ---
@@ -113,9 +183,12 @@ def extract_lexical(url: str) -> dict:
         "num_question": u.count("?"),
         "num_equals": u.count("="),
         "num_ampersand": u.count("&"),
-        "has_https": int(low.startswith("https")),
-        "has_ip": int(bool(_IP_RE.search(u))),
-        "suspicious_word_count": sum(w in low for w in SUSPICIOUS_WORDS),
+        # scheme check: only an actual https:// scheme counts
+        "has_https": int(parsed.scheme.lower() == "https"),
+        # validated IP literal in the hostname (not IP-like text in path/query)
+        "has_ip": _host_is_ip(parsed),
+        # number of *distinct* configured suspicious keywords present
+        "distinct_suspicious_words": sum(w in low for w in SUSPICIOUS_WORDS),
         "path_length": len(path),
         "query_length": len(query),
         # --- new lexical features ---
@@ -127,7 +200,7 @@ def extract_lexical(url: str) -> dict:
         "num_query_params": num_query_params,
         "fragment_length": len(fragment),
         "has_redirect": has_redirect,
-        "has_port": has_port,
+        "has_port": _safe_port(parsed),
         "is_punycode": int(bool(_PUNYCODE_RE.search(u))),
     }
 
@@ -136,17 +209,19 @@ def extract_lexical(url: str) -> dict:
 # Host features
 # ---------------------------------------------------------------------------
 def extract_host(url: str) -> dict:
-    ext = tldextract.extract(url)
+    ext = tldextract.extract(str(url))
     domain = ext.domain or ""
     subdomain = ext.subdomain or ""
     suffix = (ext.suffix or "").lower()
     registered = ext.registered_domain or ""
 
-    low = url.lower()
-    brand_in_subdomain = int(
-        any(b in subdomain.lower() for b in BRANDS)
-    )
-    brand_in_path = int(any(b in low.split(registered.lower(), 1)[-1] for b in BRANDS)) if registered else 0
+    low = str(url).lower()
+    brand_in_subdomain = int(any(b in subdomain.lower() for b in BRANDS))
+    if registered:
+        tail = low.split(registered.lower(), 1)[-1]
+        brand_in_path = int(any(b in tail for b in BRANDS))
+    else:
+        brand_in_path = 0
 
     return {
         # --- original host features ---
@@ -184,7 +259,8 @@ HOST_COLS = list(extract_host("http://example.com").keys())
 ALL_COLS = LEXICAL_COLS + HOST_COLS
 
 if __name__ == "__main__":
-    import json, sys
+    import json
+    import sys
 
     target = sys.argv[1] if len(sys.argv) > 1 else "http://example.com/login"
     print(json.dumps(extract_all(target), indent=2))

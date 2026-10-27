@@ -66,14 +66,14 @@ def plot_saved_model(Xte, yte) -> dict:
     ax.set_title("ROC curve — official test split")
     ax.legend()
     fig.tight_layout()
-    fig.savefig(FIG / "roc_curve.png", dpi=150)
+    fig.savefig(FIG / "roc_curve.png", dpi=200)
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(7, 6))
     PrecisionRecallDisplay.from_predictions(yte, proba, ax=ax, name=bundle["model_name"])
     ax.set_title("Precision–Recall curve — official test split")
     fig.tight_layout()
-    fig.savefig(FIG / "pr_curve.png", dpi=150)
+    fig.savefig(FIG / "pr_curve.png", dpi=200)
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(5, 4.5))
@@ -82,7 +82,7 @@ def plot_saved_model(Xte, yte) -> dict:
     ).plot(ax=ax, cmap="Blues", colorbar=False)
     ax.set_title(f"Confusion matrix @ threshold {threshold:.2f}")
     fig.tight_layout()
-    fig.savefig(FIG / "confusion_matrix.png", dpi=150)
+    fig.savefig(FIG / "confusion_matrix.png", dpi=200)
     plt.close(fig)
 
     model = bundle["model"]
@@ -94,7 +94,7 @@ def plot_saved_model(Xte, yte) -> dict:
         ax.set_title("Top 15 feature importances")
         ax.set_xlabel("importance")
         fig.tight_layout()
-        fig.savefig(FIG / "feature_importance.png", dpi=150)
+        fig.savefig(FIG / "feature_importance.png", dpi=200)
         plt.close(fig)
 
     return {
@@ -145,7 +145,7 @@ def compare_configs(Xtr, ytr, Xte, yte) -> pd.DataFrame:
     axes[1].set_ylim(0.9, 1.0)
     axes[1].tick_params(axis="x", rotation=0)
     fig.tight_layout()
-    fig.savefig(FIG / "model_comparison.png", dpi=150)
+    fig.savefig(FIG / "model_comparison.png", dpi=200)
     plt.close(fig)
     return df
 

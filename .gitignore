@@ -19,6 +19,9 @@ dephides/
 # Assignment documents
 *.pdf
 
+# Generated notebook exports
+docs/*.html
+
 # OS / editor
 .DS_Store
 .idea/

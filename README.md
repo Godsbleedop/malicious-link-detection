@@ -229,15 +229,15 @@ python3 predict.py --high-recall "http://..."   # favour recall
 ```bash
 python3 web_app.py       # open http://localhost:8000
 ```
-Single-page UI with URL input, verdict, confidence and the extracted feature
-table. Uses only the Python standard library.
+Single-page UI with a URL input, the verdict and a confidence percentage. Uses
+only the Python standard library and exposes no model or feature details.
 
-**Option B — Streamlit (optional, richer):**
+**Option B — Streamlit (optional):**
 ```bash
 pip install streamlit     # install in a venv if the system Python is managed
 streamlit run app.py
 ```
-Adds a decision-threshold slider, example buttons, and a feature-importance chart.
+Same minimal interface: input, verdict and confidence only.
 
 ### Quick feature dump
 ```bash
@@ -248,14 +248,14 @@ python3 features.py "http://paypal-secure-login.free-bonus.click/verify"
 ```bash
 python3 -m unittest discover -s tests -v
 ```
-25 tests cover feature correctness (scheme detection, IP validation, malformed
+26 tests cover feature correctness (scheme detection, IP validation, malformed
 ports, feature order/types) and the end-to-end prediction pipeline (known
 legitimate/phishing URLs, threshold behaviour, invalid-input handling).
 
 ### Error handling
 - `features.normalize_url()` validates user input at the boundary: empty input,
-  missing hostnames and malformed ports (e.g. `https://example.com:abc`) raise a
-  clear `ValueError`.
+  whitespace/control characters, missing hostnames and malformed ports
+  (e.g. `https://example.com:abc`) raise a clear `ValueError`.
 - Feature extraction itself never crashes — malformed ports are mapped to
   `has_port = 0`, and invalid IP literals to `has_ip = 0`.
 - The CLI prints `Invalid URL: …` and continues; the web UI renders an error box.

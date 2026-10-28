@@ -1,10 +1,9 @@
-"""Zero-dependency web UI for the malicious URL classifier.
+"""Minimal web UI for the URL safety checker.
 
-Uses only the Python standard library, so it runs anywhere:
+Only the verdict and a confidence percentage are shown; no model, feature or
+threshold details are exposed.
 
-    python3 web_app.py            # then open http://localhost:8000
-
-A Streamlit version is also available (`app.py`) if Streamlit is installed.
+    python3 web_app.py        # then open http://localhost:8000
 """
 from __future__ import annotations
 
@@ -14,51 +13,67 @@ from urllib.parse import parse_qs
 
 from classifier import DEFAULT_MODEL_PATH, classify, load_bundle
 
-BUNDLE = load_bundle(DEFAULT_MODEL_PATH)
+try:
+    BUNDLE = load_bundle(DEFAULT_MODEL_PATH)
+except FileNotFoundError:  # pragma: no cover
+    BUNDLE = None
 
 PAGE = """<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Malicious URL Classifier</title>
+<title>URL Checker</title>
 <style>
-  :root {{ color-scheme: light dark; }}
-  body {{ font-family: system-ui, sans-serif; max-width: 820px; margin: 40px auto;
-         padding: 0 20px; line-height: 1.5; }}
-  h1 {{ margin-bottom: 0; }}
-  .sub {{ color: #888; margin-top: 4px; }}
-  form {{ display: flex; gap: 8px; margin: 24px 0; flex-wrap: wrap; }}
-  input[type=text] {{ flex: 1; min-width: 280px; padding: 10px; font-size: 16px;
-                      border: 1px solid #999; border-radius: 8px; }}
-  button {{ padding: 10px 18px; font-size: 16px; border: 0; border-radius: 8px;
-            background: #2b7bba; color: white; cursor: pointer; }}
-  .result {{ padding: 18px; border-radius: 12px; margin: 18px 0; }}
-  .phishing {{ background: #ffe3e3; color: #8a1010; border: 1px solid #e0a0a0; }}
-  .safe {{ background: #e3f6e3; color: #0d5a0d; border: 1px solid #a0d0a0; }}
-  .error {{ background: #fff4d6; color: #6b4b00; border: 1px solid #e0c060; }}
-  .big {{ font-size: 24px; font-weight: 700; }}
-  table {{ border-collapse: collapse; width: 100%; margin-top: 14px; }}
-  td, th {{ padding: 6px 10px; border-bottom: 1px solid #ddd; text-align: left; }}
-  .bar {{ height: 10px; background: #eee; border-radius: 5px; overflow: hidden; }}
-  .bar > span {{ display: block; height: 100%; background: #2b7bba; }}
-  details {{ margin-top: 20px; }}
-  code {{ font-size: 13px; }}
+  * {{ box-sizing: border-box; }}
+  body {{
+    margin: 0; min-height: 100vh; display: flex; align-items: center;
+    justify-content: center; background: #f4f5f7; color: #1f2933;
+    font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 15px; line-height: 1.5;
+  }}
+  .card {{
+    width: 100%; max-width: 560px; margin: 24px; padding: 32px;
+    background: #ffffff; border: 1px solid #d9dce1; border-radius: 8px;
+  }}
+  h1 {{ margin: 0 0 6px; font-size: 20px; font-weight: 600; }}
+  .sub {{ margin: 0 0 24px; font-size: 13px; color: #6b7280; }}
+  form {{ display: flex; gap: 8px; flex-wrap: wrap; }}
+  input[type=text] {{
+    flex: 1; min-width: 240px; padding: 10px 12px; font-size: 15px;
+    font-family: inherit; color: #1f2933; background: #ffffff;
+    border: 1px solid #b8bec7; border-radius: 6px; outline: none;
+  }}
+  input[type=text]:focus {{ border-color: #1d4ed8; }}
+  button {{
+    padding: 10px 18px; font-size: 15px; font-family: inherit; font-weight: 500;
+    color: #ffffff; background: #1d4ed8; border: 0; border-radius: 6px;
+    cursor: pointer;
+  }}
+  button:hover {{ background: #1e40af; }}
+  .result {{ margin-top: 24px; padding-top: 20px; border-top: 1px solid #e5e7eb; }}
+  .verdict {{ font-size: 17px; font-weight: 600; }}
+  .phishing {{ color: #b91c1c; }}
+  .safe {{ color: #15803d; }}
+  .error {{ color: #b91c1c; font-size: 14px; }}
+  .meta {{ margin-top: 4px; font-size: 13px; color: #6b7280;
+           font-variant-numeric: tabular-nums; }}
+  .bar {{ margin-top: 12px; height: 6px; background: #e5e7eb; border-radius: 3px;
+          overflow: hidden; }}
+  .bar > span {{ display: block; height: 100%; background: #1d4ed8; }}
 </style>
 </head>
 <body>
-<h1>🔗 Malicious URL Classifier</h1>
-<p class="sub">Model: <b>{model}</b> · {nfeat} features · threshold {threshold:.2f}</p>
-<form method="post" action="/predict">
-  <input type="text" name="url" placeholder="https://example.com/login"
-         value="{url}" autofocus required>
-  <button type="submit">Classify</button>
-</form>
-{result}
-<hr>
-<p class="sub">Try: <code>https://www.google.com</code> ·
-<code>http://paypal-secure-login.example.com/verify</code> ·
-<code>https://secure-bank-update.free-bonus.click/verify?user=abc</code></p>
+<main class="card">
+  <h1>URL Checker</h1>
+  <p class="sub">Check whether a link is safe or malicious.</p>
+  <form method="post" action="/check">
+    <input type="text" name="url" placeholder="https://example.com"
+           value="{url}" autofocus required>
+    <button type="submit">Check</button>
+  </form>
+  {result}
+</main>
 </body>
 </html>"""
 
@@ -68,33 +83,24 @@ def result_html(url: str) -> str:
         return ""
     try:
         result = classify(url, BUNDLE)
-    except ValueError as exc:
-        return f'<div class="result error"><b>Invalid URL:</b> {html.escape(str(exc))}</div>'
+    except ValueError:
+        return '<div class="result"><p class="error">Invalid URL.</p></div>'
+    except Exception:
+        return '<div class="result"><p class="error">Unable to check this URL.</p></div>'
 
-    p = result["p_phishing"]
     cls = "phishing" if result["is_phishing"] else "safe"
-    verdict = "PHISHING ⚠️" if result["is_phishing"] else "LEGITIMATE ✅"
-    rows = "".join(
-        f"<tr><td>{html.escape(str(k))}</td><td>{html.escape(str(v))}</td></tr>"
-        for k, v in result["features"].iloc[0].items()
-    )
+    verdict = "Phishing" if result["is_phishing"] else "Legitimate"
+    conf = result["confidence"]
     return f"""
-<div class="result {cls}">
-  <div class="big">{verdict}</div>
-  <div>Confidence: <b>{result['confidence']:.2%}</b> · P(phishing): {p:.2%}
-       · threshold {result['threshold']:.2f}</div>
-  <div class="bar" style="margin-top:10px"><span style="width:{p*100:.1f}%"></span></div>
-</div>
-<details><summary>Extracted features</summary>
-<table><tr><th>feature</th><th>value</th></tr>{rows}</table>
-</details>"""
+<div class="result">
+  <p class="verdict {cls}">{verdict}</p>
+  <p class="meta">Confidence: {conf:.2%}</p>
+  <div class="bar"><span style="width:{conf*100:.1f}%"></span></div>
+</div>"""
 
 
 def render(url: str = "") -> str:
     return PAGE.format(
-        model=BUNDLE.get("model_name", "unknown"),
-        nfeat=len(BUNDLE["features"]),
-        threshold=float(BUNDLE.get("threshold", 0.5)),
         url=html.escape(url, quote=True),
         result=result_html(url),
     )
@@ -118,11 +124,13 @@ class Handler(BaseHTTPRequestHandler):
         url = parse_qs(body).get("url", [""])[0]
         self._send(render(url))
 
-    def log_message(self, *args):  # quieter console
+    def log_message(self, *args):
         pass
 
 
 def main() -> None:
+    if BUNDLE is None:
+        raise SystemExit("model.pkl not found. Run `python3 train_model.py` first.")
     host, port = "0.0.0.0", 8000
     print(f"Serving on http://localhost:{port}  (Ctrl+C to stop)")
     ThreadingHTTPServer((host, port), Handler).serve_forever()

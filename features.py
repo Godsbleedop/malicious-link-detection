@@ -118,6 +118,7 @@ def normalize_url(url: str) -> str:
     """Validate and normalise a user-supplied URL.
 
     - rejects non-strings and empty input,
+    - rejects whitespace / control characters,
     - prepends ``http://`` when no scheme is given (``example.com``),
     - rejects URLs without a hostname,
     - rejects malformed / out-of-range ports with a clear message.
@@ -129,6 +130,8 @@ def normalize_url(url: str) -> str:
     u = url.strip()
     if not u:
         raise ValueError("URL is empty")
+    if any(c.isspace() or ord(c) < 32 for c in u):
+        raise ValueError("URL must not contain spaces or control characters")
     if "://" not in u:
         u = "http://" + u
 

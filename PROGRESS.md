@@ -3,6 +3,17 @@
 > Master documentation lives in [`README.md`](README.md). This file is the
 > dated changelog.
 
+## 2026-10-28 — Minimal, private web UI
+
+- Both interfaces (`web_app.py`, `app.py`) now show only the URL input, the
+  verdict (`Phishing` / `Legitimate`) and a confidence percentage.
+- Removed the model name, feature table, feature-importance chart, threshold
+  slider, example buttons, emojis and the Streamlit sidebar.
+- Flat styling with a system font; no gradients.
+- `normalize_url()` now rejects whitespace and control characters, so input like
+  `not a url` returns a generic "Invalid URL." instead of being classified.
+- Tests: **26** `unittest` tests passing.
+
 ## 2026-10-26 — Code review fixes & cleanup
 
 ### Correctness fixes (`features.py`)

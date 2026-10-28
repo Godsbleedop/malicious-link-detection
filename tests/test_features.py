@@ -107,6 +107,11 @@ class TestNormalizeUrl(unittest.TestCase):
         with self.assertRaises(ValueError):
             normalize_url("http:///path")
 
+    def test_rejects_whitespace(self):
+        for bad in ("not a url", "https://exa mple.com", "https://example.com/a b"):
+            with self.assertRaises(ValueError):
+                normalize_url(bad)
+
     def test_accepts_valid(self):
         self.assertEqual(
             normalize_url("https://example.com:8443/a"), "https://example.com:8443/a"

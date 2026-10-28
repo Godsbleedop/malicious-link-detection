@@ -21,7 +21,7 @@ class TestClassifierPipeline(unittest.TestCase):
     def test_returns_expected_keys(self):
         result = classify("https://www.google.com", self.bundle)
         for key in ("url", "label", "is_phishing", "p_phishing",
-                    "confidence", "threshold", "features", "model_name"):
+                    "confidence", "threshold", "features", "reasons", "model_name"):
             self.assertIn(key, result)
         self.assertIsInstance(result["is_phishing"], bool)
         self.assertGreaterEqual(result["p_phishing"], 0.0)

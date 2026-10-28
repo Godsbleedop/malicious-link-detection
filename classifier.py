@@ -10,7 +10,7 @@ from pathlib import Path
 import joblib
 import pandas as pd
 
-from features import extract_all, normalize_url
+from features import explain_reasons, extract_all, normalize_url
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_MODEL_PATH = ROOT / "model.pkl"
@@ -60,5 +60,6 @@ def classify(
         "confidence": confidence,
         "threshold": threshold,
         "features": feats,
+        "reasons": explain_reasons(clean, is_phishing),
         "model_name": bundle.get("model_name", "unknown"),
     }

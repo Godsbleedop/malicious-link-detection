@@ -3,6 +3,16 @@
 > Master documentation lives in [`README.md`](README.md). This file is the
 > dated changelog.
 
+## 2026-10-28 — Plain-English explanations
+
+- Added `features.explain_reasons()`: turns the strongest warning signs into up
+  to four short, layman-friendly sentences (scheme, suspicious words, IP hosts,
+  brand impersonation, odd TLDs, shorteners, hyphen/digit-heavy domains).
+- `classifier.classify()` now returns a `reasons` list; the CLI and both UIs
+  display it under the verdict ("Why this looks like phishing / safe").
+- Reasons describe visible indicators, not raw feature names or model internals.
+- Tests: **30** `unittest` tests passing.
+
 ## 2026-10-28 — Minimal, private web UI
 
 - Both interfaces (`web_app.py`, `app.py`) now show only the URL input, the

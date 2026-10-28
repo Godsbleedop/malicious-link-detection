@@ -9,6 +9,7 @@ from features import (  # noqa: E402
     ALL_COLS,
     HOST_COLS,
     LEXICAL_COLS,
+    explain_reasons,
     extract_all,
     extract_host,
     extract_lexical,
@@ -88,6 +89,36 @@ class TestHostFeatures(unittest.TestCase):
     def test_subdomain_count(self):
         self.assertEqual(extract_host("https://a.b.example.com")["subdomain_count"], 2)
         self.assertEqual(extract_host("https://example.com")["subdomain_count"], 0)
+
+
+class TestExplainReasons(unittest.TestCase):
+    def test_phishing_reasons_are_plain_english(self):
+        reasons = explain_reasons(
+            "http://paypal-secure-login.example.com/verify/account", True
+        )
+        self.assertTrue(reasons)
+        self.assertLessEqual(len(reasons), 4)
+        joined = " ".join(reasons)
+        self.assertIn("HTTP", joined)
+        self.assertIn("brand", joined)
+        for name in ALL_COLS:
+            self.assertNotIn(name, joined, f"raw feature name leaked: {name}")
+
+    def test_safe_reasons_mention_https(self):
+        reasons = explain_reasons("https://www.google.com", False)
+        self.assertTrue(any("HTTPS" in r for r in reasons))
+        self.assertLessEqual(len(reasons), 4)
+
+    def test_reason_limit(self):
+        self.assertEqual(
+            len(explain_reasons("http://192.168.1.10/login.php", True, max_reasons=2)),
+            2,
+        )
+
+    def test_always_returns_something(self):
+        # Forced-phishing verdict on an otherwise clean URL must still explain.
+        self.assertTrue(explain_reasons("https://www.google.com", True))
+        self.assertTrue(explain_reasons("https://www.google.com", False))
 
 
 class TestNormalizeUrl(unittest.TestCase):

@@ -23,6 +23,9 @@ def print_result(result: dict) -> None:
     print(f"Confidence : {result['confidence']:.2%}")
     print(f"P(phishing): {result['p_phishing']:.2%}  "
           f"(threshold: {result['threshold']:.2f})")
+    print("Why:")
+    for reason in result["reasons"]:
+        print(f"  - {reason}")
     print()
 
 

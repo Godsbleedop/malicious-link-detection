@@ -257,6 +257,87 @@ def extract_all(url: str) -> dict:
     return feats
 
 
+def explain_reasons(url: str, is_phishing: bool, max_reasons: int = 4) -> list[str]:
+    """Return short, plain-English reasons for a prediction.
+
+    These describe visible indicators in the link (scheme, keywords, domain
+    shape, etc.); they are not a mathematical attribution of the model's
+    decision. Pass an already-normalised URL.
+    """
+    f = extract_all(url)
+    low = str(url).lower()
+    suffix = tldextract.extract(str(url)).suffix.lower()
+    reasons: list[tuple[int, str]] = []
+
+    if is_phishing:
+        if not f["has_https"]:
+            reasons.append((5, "Uses an insecure HTTP connection instead of HTTPS."))
+        if f["has_ip"]:
+            reasons.append((5, "Uses a raw IP address instead of a normal domain name."))
+        if f["is_punycode"]:
+            reasons.append((5, "Uses encoded characters that can disguise the real website name."))
+        if f["brand_in_subdomain"]:
+            reasons.append((5, "Puts a well-known brand name in the subdomain, a common impersonation trick."))
+        if f["num_at"]:
+            reasons.append((5, "Contains an '@' symbol, which can hide the real destination."))
+        if f["suspicious_tld"]:
+            reasons.append((3, f"Uses an uncommon domain ending (.{suffix}) often seen in phishing."))
+        if f["is_url_shortener"]:
+            reasons.append((3, "Uses a link shortener that hides the real destination."))
+        words = [w for w in SUSPICIOUS_WORDS if w in low]
+        if len(words) >= 2:
+            reasons.append((3, "Contains words commonly used to trick people "
+                               f"({', '.join(words[:3])})."))
+        if f["subdomain_count"] >= 2 or f["subdomain_entropy"] >= 3.5:
+            reasons.append((2, "Has a complex or random-looking subdomain."))
+        if f["hyphens_in_domain"] >= 2:
+            reasons.append((2, "The domain name contains several hyphens."))
+        if f["hyphens_in_subdomain"] >= 2:
+            reasons.append((2, "The subdomain contains several hyphens."))
+        if f["digits_in_domain"] >= 3 or f["domain_digit_ratio"] >= 0.2:
+            reasons.append((2, "The domain name contains an unusual number of digits."))
+        if f["has_port"]:
+            reasons.append((2, "Uses a non-standard network port."))
+        if f["url_length"] >= 100:
+            reasons.append((1, "The link is unusually long."))
+        if f["num_query_params"] >= 4:
+            reasons.append((1, "The link contains a long list of parameters."))
+        if f["has_file_ext"]:
+            reasons.append((1, "The link points to a downloadable or script file."))
+    else:
+        if f["has_https"]:
+            reasons.append((5, "Uses a secure HTTPS connection."))
+        if not f["has_ip"]:
+            reasons.append((4, "Uses a normal domain name rather than an IP address."))
+        if not f["is_punycode"]:
+            reasons.append((4, "The domain name uses standard characters."))
+        if not f["is_url_shortener"]:
+            reasons.append((3, "Does not hide the destination behind a link shortener."))
+        if not f["num_at"]:
+            reasons.append((3, "Does not contain an '@' symbol that could hide the real destination."))
+        if not f["suspicious_tld"]:
+            reasons.append((2, "Uses a common domain ending."))
+        if f["distinct_suspicious_words"] == 0:
+            reasons.append((2, "Does not contain common phishing keywords."))
+        if f["subdomain_count"] <= 1 and f["subdomain_entropy"] < 3.0:
+            reasons.append((1, "The domain name is short and easy to read."))
+
+    reasons.sort(key=lambda item: -item[0])
+    out: list[str] = []
+    for _, text in reasons:
+        if text not in out:
+            out.append(text)
+        if len(out) >= max_reasons:
+            break
+    if not out:
+        out.append(
+            "The link shows patterns often associated with phishing."
+            if is_phishing
+            else "No strong warning signs were found in the link."
+        )
+    return out
+
+
 LEXICAL_COLS = list(extract_lexical("http://example.com").keys())
 HOST_COLS = list(extract_host("http://example.com").keys())
 ALL_COLS = LEXICAL_COLS + HOST_COLS

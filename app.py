@@ -63,7 +63,14 @@ def main() -> None:
             f'<p class="meta">Confidence: {result["confidence"]:.2%}</p>',
             unsafe_allow_html=True,
         )
-        st.progress(min(max(result["p_phishing"], 0.0), 1.0))
+        st.progress(min(max(result["confidence"], 0.0), 1.0))
+        why = (
+            "Why this looks like phishing:"
+            if result["is_phishing"]
+            else "Why this looks safe:"
+        )
+        st.markdown(why)
+        st.markdown("\n".join(f"- {reason}" for reason in result["reasons"]))
 
 
 if __name__ == "__main__":

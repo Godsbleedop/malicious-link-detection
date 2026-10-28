@@ -61,6 +61,10 @@ PAGE = """<!doctype html>
   .bar {{ margin-top: 12px; height: 6px; background: #e5e7eb; border-radius: 3px;
           overflow: hidden; }}
   .bar > span {{ display: block; height: 100%; background: #1d4ed8; }}
+  .reasons {{ margin: 14px 0 0; padding-left: 18px; font-size: 14px;
+              color: #374151; }}
+  .reasons li {{ margin: 3px 0; }}
+  .why {{ margin: 14px 0 4px; font-size: 13px; color: #6b7280; }}
 </style>
 </head>
 <body>
@@ -91,11 +95,17 @@ def result_html(url: str) -> str:
     cls = "phishing" if result["is_phishing"] else "safe"
     verdict = "Phishing" if result["is_phishing"] else "Legitimate"
     conf = result["confidence"]
+    items = "".join(
+        f"<li>{html.escape(reason)}</li>" for reason in result["reasons"]
+    )
+    why = "Why this looks like phishing:" if result["is_phishing"] else "Why this looks safe:"
     return f"""
 <div class="result">
   <p class="verdict {cls}">{verdict}</p>
   <p class="meta">Confidence: {conf:.2%}</p>
   <div class="bar"><span style="width:{conf*100:.1f}%"></span></div>
+  <p class="why">{why}</p>
+  <ul class="reasons">{items}</ul>
 </div>"""
 
 

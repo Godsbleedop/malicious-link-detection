@@ -229,15 +229,31 @@ python3 predict.py --high-recall "http://..."   # favour recall
 ```bash
 python3 web_app.py       # open http://localhost:8000
 ```
-Single-page UI with a URL input, the verdict and a confidence percentage. Uses
-only the Python standard library and exposes no model or feature details.
+Single-page UI with a URL input, the verdict, a confidence percentage and a few
+plain-English reasons. Uses only the Python standard library and exposes no
+model or feature details.
 
 **Option B — Streamlit (optional):**
 ```bash
 pip install streamlit     # install in a venv if the system Python is managed
 streamlit run app.py
 ```
-Same minimal interface: input, verdict and confidence only.
+Same interface: input, verdict, confidence and plain-English reasons.
+
+### Plain-English explanations
+Every verdict comes with up to four short reasons, shown in the CLI and both
+UIs. They describe visible warning signs rather than model internals, e.g.:
+
+- `http://paypal-secure-login.example.com/verify/account` →
+  *"Uses an insecure HTTP connection instead of HTTPS"*, *"Puts a well-known
+  brand name in the subdomain"*, *"Contains words commonly used to trick people
+  (login, verify, secure)"*.
+- `https://www.google.com` →
+  *"Uses a secure HTTPS connection"*, *"Uses a normal domain name rather than an
+  IP address"*.
+
+The reasons are heuristic indicators, not a SHAP-style attribution of the
+model's exact decision.
 
 ### Quick feature dump
 ```bash
@@ -248,9 +264,10 @@ python3 features.py "http://paypal-secure-login.free-bonus.click/verify"
 ```bash
 python3 -m unittest discover -s tests -v
 ```
-26 tests cover feature correctness (scheme detection, IP validation, malformed
-ports, feature order/types) and the end-to-end prediction pipeline (known
-legitimate/phishing URLs, threshold behaviour, invalid-input handling).
+30 tests cover feature correctness (scheme detection, IP validation, malformed
+ports, feature order/types, explanation text) and the end-to-end prediction
+pipeline (known legitimate/phishing URLs, threshold behaviour, invalid-input
+handling).
 
 ### Error handling
 - `features.normalize_url()` validates user input at the boundary: empty input,
@@ -267,14 +284,14 @@ legitimate/phishing URLs, threshold behaviour, invalid-input handling).
 
 | Path | Purpose |
 |---|---|
-| `features.py` | 40 lexical + host features, input validation, `ALL_COLS` |
+| `features.py` | 40 lexical + host features, input validation, explanation helper, `ALL_COLS` |
 | `classifier.py` | shared load/classify logic (CLI + both UIs) |
 | `train_model.py` | train/compare models, CV, threshold tuning, save `model.pkl` |
-| `predict.py` | CLI prediction with tuned threshold + loop mode |
+| `predict.py` | CLI prediction with tuned threshold, reasons + loop mode |
 | `app.py` | Streamlit web UI (optional) |
 | `web_app.py` | zero-dependency stdlib web UI (default demo) |
 | `evaluate.py` | test-set evaluation, config comparison, figures |
-| `tests/` | 25 automated tests (`unittest`) |
+| `tests/` | 30 automated tests (`unittest`) |
 | `model.pkl` | bundle: model, features, scaler, threshold, metadata |
 | `metrics.json` | validation/test metrics from training |
 | `metrics_configs.json` | feature-config comparison results |
